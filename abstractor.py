@@ -44,18 +44,25 @@ class AbGraph:
         # Setup parameters
         for k in self.abstractors.keys():   # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
-            self.biases[k] = tf.Variable(0.0)
+            self.biases[k] = tf.Variable(np.zeros((1,1)))   #
+        self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),output_len) ))
+        self.biases[(-1,)] = tf.Variable(np.zeros((1,output_len)))   #
         # Define activations
         for i in range(self.input_len):
             self.activations[i] = self.X[:,i]   #
         for k in self.abstractors.keys():
-            parents = tf.Variable([0.0]*len(k))    #
+            parents = tf.Variable(np.zeros( (len(k)) ))   #
             for i in range(len(k)):
                 parents[i] = self.activations[i]
             child = self.abstractions[k]
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])
         # Fully connected at the end (front -> output)
-        
+        front_ = tf.Variable(np.zeros( (len(self.front)) ))
+        i = 0
+        for f in self.front:
+            front_[i] = self.activations[f]
+            i += 1
+        self.Y = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])
 
 #g = AbGraph(5,3)
 #print(g.insert_ab((0,1)))
