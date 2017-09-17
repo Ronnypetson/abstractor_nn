@@ -1,16 +1,17 @@
 import numpy as np
 import tensorflow as tf
 
+batch_size = 10 #
 class AbGraph:
     def __init__(self,input_len,output_len):
-        self.id_count = input_len+output_len
+        self.id_count = input_len   #+output_len
         self.input_len = input_len
         self.output_len = output_len
         self.nodes = set() # Nodes identification
         self.front = set()  # Nodes that can be removed
         self.abstractors = {}   # Only one abstractor per pair of nodes
-        self.X = tf.placeholder(tf.float32,shape=(10,input_len))    # None
-        self.Y = tf.placeholder(tf.float32,shape=(10,output_len))   #
+        self.X = tf.placeholder(tf.float32,shape=(batch_size,input_len))    # None
+        self.Y = tf.placeholder(tf.float32,shape=(batch_size,output_len))   #
         self.weights = {}    # Weights and biases of each abstractor
         self.biases = {}
         self.activations = {}   # the output of the nodes
@@ -44,30 +45,38 @@ class AbGraph:
         # Setup parameters
         for k in self.abstractors.keys():   # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
-            self.biases[k] = tf.Variable(np.zeros((1,1)))   #
+            self.biases[k] = tf.Variable(np.zeros((1,1),dtype=np.float32))   #
         self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),self.output_len) ))
-        self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len)))   #
+        self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len),dtype=np.float32))   #
         # Define activations
         for i in range(self.input_len):
             self.activations[i] = self.X[:,i]   #
         for k in self.abstractors.keys():
             parents = []   #
             for i in range(len(k)):
-                parents.append(self.activations[k[i]])
-            parents = tf.Variable(tf.transpose(parents))
+                parents.append( self.activations[k[i]] )
+            parents = tf.Variable(tf.transpose( parents ))
+            if len(parents.shape) == 3: # Gambiarra
+                parents = parents[0]
+            #print(parents)
             child = self.abstractors[k]
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
             front_.append(self.activations[f])
-        self.Y = tf.nn.elu(tf.matmul(tf.transpose(front_),self.weights[(-1,)])+self.biases[(-1,)])
+        front_ = tf.Variable(tf.transpose( front_ ))
+        if len(front_.shape) == 3:  # Gambiarra
+                front_ = front_[0]
+        self.Y = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])
 
 g = AbGraph(3,2)
 print(g.insert_ab((0,1)))
 print(g.insert_ab((1,2)))
+print(g.insert_ab((3,4)))
 for i in g.abstractors.keys():
     print(i,g.abstractors[i])
 g.build_model()
+
 #print(g.delete_ab((0,1)))
 
