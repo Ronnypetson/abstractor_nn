@@ -9,8 +9,8 @@ class AbGraph:
         self.nodes = set() # Nodes identification
         self.front = set()  # Nodes that can be removed
         self.abstractors = {}   # Only one abstractor per pair of nodes
-        self.X = tf.placeholder(tf.float32,shape=(None,input_len))
-        self.Y = tf.placeholder(tf.float32,shape=(None,output_len))
+        self.X = tf.placeholder(tf.float32,shape=(10,input_len))    # None
+        self.Y = tf.placeholder(tf.float32,shape=(10,output_len))   #
         self.weights = {}    # Weights and biases of each abstractor
         self.biases = {}
         self.activations = {}   # the output of the nodes
@@ -54,16 +54,16 @@ class AbGraph:
             parents = []   #
             for i in range(len(k)):
                 parents.append(self.activations[k[i]])
-            parents = tf.Variable(parents)
-            child = self.abstractions[k]
+            parents = tf.Variable(tf.transpose(parents))
+            child = self.abstractors[k]
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
             front_.append(self.activations[f])
-        self.Y = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])
+        self.Y = tf.nn.elu(tf.matmul(tf.transpose(front_),self.weights[(-1,)])+self.biases[(-1,)])
 
-g = AbGraph(5,3)
+g = AbGraph(3,2)
 print(g.insert_ab((0,1)))
 print(g.insert_ab((1,2)))
 for i in g.abstractors.keys():
