@@ -53,7 +53,9 @@ class AbGraph:
             for i in range(len(k)):
                 parents[i] = self.activations[i]
             child = self.abstractions[k]
-            self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+)
+            self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])
+        # Fully connected at the end (front -> output)
+        
 
 #g = AbGraph(5,3)
 #print(g.insert_ab((0,1)))
