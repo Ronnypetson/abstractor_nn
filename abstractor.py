@@ -10,7 +10,7 @@ class AbGraph:
         self.front = set()  # Nodes that can be removed
         self.abstractors = {}   # Only one abstractor per pair of nodes
         self.X = tf.placeholder(tf.float32,shape=(None,input_len))
-        self.Y = tf.placeholder(t.float32,shape=(None,output_len))
+        self.Y = tf.placeholder(tf.float32,shape=(None,output_len))
         self.weights = {}    # Weights and biases of each abstractor
         self.biases = {}
         self.activations = {}   # the output of the nodes
@@ -45,28 +45,29 @@ class AbGraph:
         for k in self.abstractors.keys():   # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
             self.biases[k] = tf.Variable(np.zeros((1,1)))   #
-        self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),output_len) ))
-        self.biases[(-1,)] = tf.Variable(np.zeros((1,output_len)))   #
+        self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),self.output_len) ))
+        self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len)))   #
         # Define activations
         for i in range(self.input_len):
             self.activations[i] = self.X[:,i]   #
         for k in self.abstractors.keys():
-            parents = tf.Variable(np.zeros( (len(k)) ))   #
+            parents = []   #
             for i in range(len(k)):
-                parents[i] = self.activations[i]
+                parents.append(self.activations[k[i]])
+            parents = tf.Variable(parents)
             child = self.abstractions[k]
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])
         # Fully connected at the end (front -> output)
-        front_ = tf.Variable(np.zeros( (len(self.front)) ))
-        i = 0
+        front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
-            front_[i] = self.activations[f]
-            i += 1
+            front_.append(self.activations[f])
         self.Y = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])
 
-#g = AbGraph(5,3)
-#print(g.insert_ab((0,1)))
-#for i in g.abstractors.keys():
-#    print(i,g.abstractors[i])
+g = AbGraph(5,3)
+print(g.insert_ab((0,1)))
+print(g.insert_ab((1,2)))
+for i in g.abstractors.keys():
+    print(i,g.abstractors[i])
+g.build_model()
 #print(g.delete_ab((0,1)))
 
