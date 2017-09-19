@@ -113,7 +113,7 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())  # g.var_init()
     for i in range(1000):
         X,Y = get_batch()
-        loss = sess.run(opt,feed_dict={g.X:X,g.Y:Y})
+        loss,_ = sess.run([cost,opt],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
             print(loss)
 
