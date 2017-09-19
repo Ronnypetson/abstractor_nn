@@ -2,8 +2,8 @@ import numpy as np
 import tensorflow as tf
 import random as rd
 
-batch_size = 10 #
-learning_rate = 0.01
+batch_size = 16 #
+learning_rate = 0.001
 class AbGraph:
     def __init__(self,input_len,output_len):
         self.id_count = input_len   #+output_len
@@ -74,18 +74,6 @@ class AbGraph:
                 self.front_ = self.front_[0]
         self.output = tf.nn.elu(tf.matmul(self.front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
 
-    def var_init(self):
-        var = []
-        for w in self.weights:
-            var.append(self.weights[w].initialized_value())
-            #tf.variables_initializer([self.weights[w]])
-        for b in self.biases:
-            var.append(self.biases[b].initialized_value())
-            #tf.variables_initializer([self.biases[b]])
-        #var.append(self.parents)
-        #var.append(self.front_)
-        #return tf.variables_initializer(var)
-
 g = AbGraph(3,1)
 print(g.insert_ab((0,1)))
 print(g.insert_ab((1,2)))
@@ -101,7 +89,7 @@ def get_batch():
         x = rd.uniform(0.0,1.0)
         y = rd.uniform(0.0,1.0)
         z = rd.uniform(0.0,1.0)
-        s = x + y + z
+        s = x * y * z
         X[i] = [x,y,z]
         Y[i] = [s]
     return X,Y
@@ -110,8 +98,8 @@ cost = tf.losses.mean_squared_error(g.Y,g.output)
 opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
 with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())  # g.var_init()
-    for i in range(1000):
+    sess.run(tf.global_variables_initializer())
+    for i in range(10000):
         X,Y = get_batch()
         loss,_ = sess.run([cost,opt],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
