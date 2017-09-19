@@ -57,32 +57,34 @@ class AbGraph:
             parents = []   #
             for i in range(len(k)):
                 parents.append( self.activations[k[i]] )
-            self.parents = tf.Variable(tf.transpose( parents ))
+            #self.parents = tf.Variable(tf.transpose( parents ))
+            self.parents = tf.transpose( parents )
             if len(self.parents.shape) == 3: # Gambiarra
                 self.parents = self.parents[0]
             #print(parents)
             child = self.abstractors[k]
-            self.activations[child] = tf.nn.elu(tf.matmul(self.parents,self.weights[k])+self.biases[k])
+            self.activations[child] = tf.nn.elu(tf.matmul(self.parents,self.weights[k].initialized_value())+self.biases[k].initialized_value())
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
             front_.append(self.activations[f])
-        self.front_ = tf.Variable(tf.transpose( front_ ))
+        #self.front_ = tf.Variable(tf.transpose( front_ ))
+        self.front_ = tf.transpose( front_ )
         if len(self.front_.shape) == 3:  # Gambiarra
                 self.front_ = self.front_[0]
-        self.output = tf.nn.elu(tf.matmul(self.front_,self.weights[(-1,)])+self.biases[(-1,)])
+        self.output = tf.nn.elu(tf.matmul(self.front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
 
     def var_init(self):
         var = []
         for w in self.weights:
-            var.append(self.weights[w])
+            var.append(self.weights[w].initialized_value())
             #tf.variables_initializer([self.weights[w]])
         for b in self.biases:
-            var.append(self.biases[b])
+            var.append(self.biases[b].initialized_value())
             #tf.variables_initializer([self.biases[b]])
         #var.append(self.parents)
-        var.append(self.front_)
-        return tf.variables_initializer(var)
+        #var.append(self.front_)
+        #return tf.variables_initializer(var)
 
 g = AbGraph(3,1)
 print(g.insert_ab((0,1)))
@@ -101,14 +103,14 @@ def get_batch():
         z = rd.uniform(0.0,1.0)
         s = x + y + z
         X[i] = [x,y,z]
-        Y[i] = s
+        Y[i] = [s]
     return X,Y
 
 cost = tf.losses.mean_squared_error(g.Y,g.output)
 opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
 with tf.Session() as sess:
-    sess.run(g.var_init())
+    sess.run(tf.global_variables_initializer())  # g.var_init()
     for i in range(1000):
         X,Y = get_batch()
         loss = sess.run(opt,feed_dict={g.X:X,g.Y:Y})
