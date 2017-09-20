@@ -55,7 +55,6 @@ class AbGraph:
             parents = []   #
             for i in range(len(k)):
                 parents.append(self.activations[k[i]])
-            #print(len(parents),parents[0].shape)
             parents = tf.transpose(parents)
             if len(parents.shape) == 3:
                 parents = parents[0]
@@ -64,8 +63,10 @@ class AbGraph:
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
-            front_.append(self.activations[f])
-        #front_ = tf.transpose(front_)[0]
+            if len(self.activations[f].shape) == 1:
+                front_.append(self.activations[f])
+            else:
+                front_.append(tf.transpose(self.activations[f])[0])
         front_ = tf.transpose(front_)
         if len(front_.shape) == 3:
             front_ = front_[0]
@@ -75,10 +76,10 @@ class AbGraph:
 
 g = AbGraph(20,1)
 #g.insert_ab((0,1))
-#for i in range(19): # 0 - 19
-#    g.insert_ab((i,i+1))
-#for i in range(20,38):
-#    g.insert_ab((i,i+1))
+for i in range(19): # 0 - 19
+    g.insert_ab((i,i+1))
+for i in range(20,38):
+    g.insert_ab((i,i+1))
 #for i in range(39,56):
 #    g.insert_ab((i,i+1))
 g.build_model()
