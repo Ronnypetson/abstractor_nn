@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import random as rd
 
-batch_size = 10 #
+batch_size = 48 #
 learning_rate = 0.001
 class AbGraph:
     def __init__(self,input_len,output_len):
@@ -65,15 +65,22 @@ class AbGraph:
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
             front_.append(self.activations[f])
-        #print(len(front_),front_[0].shape)
-        front_ = tf.transpose(front_)[0]
+        #front_ = tf.transpose(front_)[0]
+        front_ = tf.transpose(front_)
+        if len(front_.shape) == 3:
+            front_ = front_[0]
+        elif len(front_.shape) == 1:
+            front_ = [front_]
         self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
 
 g = AbGraph(20,1)
-for i in range(19): # 0 - 19
-    g.insert_ab((i,i+1))
-for i in range(20,30):
-    g.insert_ab((i,i+1))
+#g.insert_ab((0,1))
+#for i in range(19): # 0 - 19
+#    g.insert_ab((i,i+1))
+#for i in range(20,38):
+#    g.insert_ab((i,i+1))
+#for i in range(39,56):
+#    g.insert_ab((i,i+1))
 g.build_model()
 #for k in sorted(g.abstractors.keys()):
 #    print(k)
@@ -85,7 +92,7 @@ def get_batch():
         s = 0.0
         for j in range(20):
             X[i,j] = rd.uniform(0.0,1.0)
-            s += j*X[i,j]
+            s += j**X[i,j] + j*(X[i,j]**j)
         Y[i] = [s]
     return X,Y
 
