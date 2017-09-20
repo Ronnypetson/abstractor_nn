@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import random as rd
 
-batch_size = 16 #
+batch_size = 10 #
 learning_rate = 0.001
 class AbGraph:
     def __init__(self,input_len,output_len):
@@ -44,53 +44,42 @@ class AbGraph:
         return False
 
     def build_model(self):
-        # Setup parameters
-        for k in self.abstractors.keys():   # Weights of abstractor k
+        for k in self.abstractors.keys():   # Setup parameters # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
             self.biases[k] = tf.Variable(np.zeros((1,1),dtype=np.float32))   #
         self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),self.output_len) ))
         self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len),dtype=np.float32))   #
-        # Define activations
-        for i in range(self.input_len):
+        for i in range(self.input_len):     # Define activations
             self.activations[i] = self.X[:,i]   #
         for k in self.abstractors.keys():
             parents = []   #
             for i in range(len(k)):
-                parents.append( self.activations[k[i]] )
-            #self.parents = tf.Variable(tf.transpose( parents ))
-            self.parents = tf.transpose( parents )
-            if len(self.parents.shape) == 3: # Gambiarra
-                self.parents = self.parents[0]
-            #print(parents)
+                parents.append(self.activations[k[i]])
+            print(len(parents),parents[0].shape)
+            parents = tf.transpose(parents)
             child = self.abstractors[k]
-            self.activations[child] = tf.nn.elu(tf.matmul(self.parents,self.weights[k].initialized_value())+self.biases[k].initialized_value())
+            self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k].initialized_value())+self.biases[k].initialized_value())
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
             front_.append(self.activations[f])
-        #self.front_ = tf.Variable(tf.transpose( front_ ))
-        self.front_ = tf.transpose( front_ )
-        if len(self.front_.shape) == 3:  # Gambiarra
-                self.front_ = self.front_[0]
-        self.output = tf.nn.elu(tf.matmul(self.front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
+        print(len(front_),front_[0].shape)
+        front_ = tf.transpose(front_)[0]
+        self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
 
-g = AbGraph(3,1)
-print(g.insert_ab((0,1)))
-print(g.insert_ab((1,2)))
-print(g.insert_ab((3,4)))
-for i in g.abstractors.keys():
-    print(i,g.abstractors[i])
+g = AbGraph(20,1)
+for i in range(19):
+    g.insert_ab((i,i+1))
 g.build_model()
-
+#print(g.delete_ab((0,1)))
 def get_batch():
-    X = np.zeros((batch_size,3))
+    X = np.zeros((batch_size,20))
     Y = np.zeros((batch_size,1))
     for i in range(batch_size):
-        x = rd.uniform(0.0,1.0)
-        y = rd.uniform(0.0,1.0)
-        z = rd.uniform(0.0,1.0)
-        s = x * y * z
-        X[i] = [x,y,z]
+        s = 0.0
+        for j in range(20):
+            X[i,j] = rd.uniform(0.0,1.0)
+            s += X[i,j]
         Y[i] = [s]
     return X,Y
 
@@ -104,6 +93,4 @@ with tf.Session() as sess:
         loss,_ = sess.run([cost,opt],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
             print(loss)
-
-#print(g.delete_ab((0,1)))
 
