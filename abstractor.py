@@ -43,6 +43,10 @@ class AbGraph:
             return True
         return False
 
+    def mutate():   # p(add) = 1 - p(remove)
+        # sample from p, add or remove abstractor and update the graph
+        return None
+
     def build_model(self):
         for k in self.abstractors.keys():   # Setup parameters # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
@@ -80,8 +84,8 @@ for i in range(19): # 0 - 19
     g.insert_ab((i,i+1))
 for i in range(20,38):
     g.insert_ab((i,i+1))
-#for i in range(39,56):
-#    g.insert_ab((i,i+1))
+for i in range(39,56):
+    g.insert_ab((i,i+1))
 g.build_model()
 #for k in sorted(g.abstractors.keys()):
 #    print(k)
