@@ -51,26 +51,32 @@ class AbGraph:
         self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len),dtype=np.float32))   #
         for i in range(self.input_len):     # Define activations
             self.activations[i] = self.X[:,i]   #
-        for k in self.abstractors.keys():
+        for k in sorted(self.abstractors.keys()):
             parents = []   #
             for i in range(len(k)):
                 parents.append(self.activations[k[i]])
-            print(len(parents),parents[0].shape)
+            #print(len(parents),parents[0].shape)
             parents = tf.transpose(parents)
+            if len(parents.shape) == 3:
+                parents = parents[0]
             child = self.abstractors[k]
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k].initialized_value())+self.biases[k].initialized_value())
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in self.front:
             front_.append(self.activations[f])
-        print(len(front_),front_[0].shape)
+        #print(len(front_),front_[0].shape)
         front_ = tf.transpose(front_)[0]
         self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
 
 g = AbGraph(20,1)
-for i in range(19):
+for i in range(19): # 0 - 19
+    g.insert_ab((i,i+1))
+for i in range(20,30):
     g.insert_ab((i,i+1))
 g.build_model()
+#for k in sorted(g.abstractors.keys()):
+#    print(k)
 #print(g.delete_ab((0,1)))
 def get_batch():
     X = np.zeros((batch_size,20))
@@ -79,7 +85,7 @@ def get_batch():
         s = 0.0
         for j in range(20):
             X[i,j] = rd.uniform(0.0,1.0)
-            s += X[i,j]
+            s += j*X[i,j]
         Y[i] = [s]
     return X,Y
 
@@ -88,7 +94,7 @@ opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for i in range(10000):
+    for i in range(50000):
         X,Y = get_batch()
         loss,_ = sess.run([cost,opt],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
