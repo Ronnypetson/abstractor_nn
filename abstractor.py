@@ -45,11 +45,6 @@ class AbGraph:
             return True
         return False
 
-    def mutate(self):   # p(add) = 1 - p(remove)
-        # sample from p, add or remove abstractor and update the graph
-        #dc = copy.deepcopy(self)
-        return None
-
     def build_model(self):
         for k in self.abstractors.keys():   # Setup parameters # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
@@ -83,13 +78,16 @@ class AbGraph:
 
 g = AbGraph(20,1)
 #g.insert_ab((0,1))
-#for i in range(19): # 0 - 19
-#    g.insert_ab((i,i+1))
+for i in range(19): # 0 - 19
+    g.insert_ab((i,i+1))
 #for i in range(20,38):
 #    g.insert_ab((i,i+1))
 #for i in range(39,56):
 #    g.insert_ab((i,i+1))
 g.build_model()
+
+h = AbGraph(20,1)
+h.build_model()
 
 def get_batch():
     X = np.zeros((batch_size,20))
@@ -97,21 +95,26 @@ def get_batch():
     for i in range(batch_size):
         s = 0.0
         for j in range(20):
-            X[i,j] = rd.uniform(0.0,1.0)
-            s += j**X[i,j] + j*(X[i,j]**j)
+            X[i,j] = rd.uniform(1.0,2.0)
+            s += X[i,j]**2
         Y[i] = [s]
     return X,Y
 
-cost = tf.losses.mean_squared_error(g.Y,g.output)
-opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+def get_cost_opt(g_):
+    cost = tf.losses.mean_squared_error(g_.Y,g_.output)
+    opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+    return cost, opt
+
+cost_g, opt_g = get_cost_opt(g)
+cost_h, opt_h = get_cost_opt(h)
 
 sv = tf.train.Supervisor(logdir=checkpoint_dir,save_model_secs=60)
 with sv.managed_session() as sess:
     if not sv.should_stop():
-        #sess.run(tf.global_variables_initializer())
         for i in range(50000):
             X,Y = get_batch()
-            loss,_ = sess.run([cost,opt],feed_dict={g.X:X,g.Y:Y})
+            loss_g,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+            loss_h,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
             if i%50 == 0:
-                print(loss)
+                print(loss_g,loss_h)
 
