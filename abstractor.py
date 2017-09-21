@@ -1,9 +1,11 @@
 import numpy as np
 import tensorflow as tf
 import random as rd
+import copy
 
 batch_size = 48 #
 learning_rate = 0.001
+checkpoint_dir = '/checkpoint/abstractor/'
 class AbGraph:
     def __init__(self,input_len,output_len):
         self.id_count = input_len   #+output_len
@@ -43,8 +45,9 @@ class AbGraph:
             return True
         return False
 
-    def mutate():   # p(add) = 1 - p(remove)
+    def mutate(self):   # p(add) = 1 - p(remove)
         # sample from p, add or remove abstractor and update the graph
+        #dc = copy.deepcopy(self)
         return None
 
     def build_model(self):
@@ -80,16 +83,14 @@ class AbGraph:
 
 g = AbGraph(20,1)
 #g.insert_ab((0,1))
-for i in range(19): # 0 - 19
-    g.insert_ab((i,i+1))
-for i in range(20,38):
-    g.insert_ab((i,i+1))
-for i in range(39,56):
-    g.insert_ab((i,i+1))
+#for i in range(19): # 0 - 19
+#    g.insert_ab((i,i+1))
+#for i in range(20,38):
+#    g.insert_ab((i,i+1))
+#for i in range(39,56):
+#    g.insert_ab((i,i+1))
 g.build_model()
-#for k in sorted(g.abstractors.keys()):
-#    print(k)
-#print(g.delete_ab((0,1)))
+
 def get_batch():
     X = np.zeros((batch_size,20))
     Y = np.zeros((batch_size,1))
@@ -104,11 +105,13 @@ def get_batch():
 cost = tf.losses.mean_squared_error(g.Y,g.output)
 opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    for i in range(50000):
-        X,Y = get_batch()
-        loss,_ = sess.run([cost,opt],feed_dict={g.X:X,g.Y:Y})
-        if i%50 == 0:
-            print(loss)
+sv = tf.train.Supervisor(logdir=checkpoint_dir,save_model_secs=60)
+with sv.managed_session() as sess:
+    if not sv.should_stop():
+        #sess.run(tf.global_variables_initializer())
+        for i in range(50000):
+            X,Y = get_batch()
+            loss,_ = sess.run([cost,opt],feed_dict={g.X:X,g.Y:Y})
+            if i%50 == 0:
+                print(loss)
 
