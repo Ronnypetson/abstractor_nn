@@ -13,7 +13,7 @@ class AbGraph:
         self.output_len = output_len
         self.nodes = set() # Nodes identification
         self.front = set()  # Nodes that can be removed
-        self.abstractors = {}   # Only one abstractor per pair of nodes
+        self.abstractors = {}   # Only one abstractor per tuple of nodes
         self.X = tf.placeholder(tf.float32,shape=(batch_size,input_len))    # None
         self.Y = tf.placeholder(tf.float32,shape=(batch_size,output_len))   #
         self.weights = {}    # Weights and biases of each abstractor
@@ -22,6 +22,28 @@ class AbGraph:
         for i in range(self.id_count):
             self.nodes.add(i)   # 0 to input_len-1, input_len to input_len+output_len-1
             self.front.add(i)
+
+    @classmethod
+    def from_graph(self,g):
+        h = AbGraph(g.input_len,g.output_len)
+        self.nodes = copy.deepcopy(g.nodes)
+        self.front = copy.deepcopy(g.front)
+        self.abstractors = copy.deepcopy(g.abstractors)
+        self.X = tf.placeholder(tf.float32,shape=(batch_size,h.input_len))    # None
+        self.Y = tf.placeholder(tf.float32,shape=(batch_size,h.output_len))   #
+        #self.weights = copy.deepcopy(g.weights)    # Weights and biases of each abstractor
+        #self.biases = {}
+        #self.activations = {}   # the output of the nodes
+        return h
+
+    #def load_parameters(self,g):
+    #    for k in g.weights:
+    #        #aux = tf.Variable(np.zeros((2,1)))  # g.weights[k].shape
+    #        #self.weights[k] = aux.assign(g.weights[k])
+    #    for k in g.biases:
+    #        #aux = tf.Variable(np.zeros(g.biases[k].shape))
+    #        #self.biases[k] = aux.assign(g.biases[k])
+    #    #self.activations = g.activations
 
     def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2)
         for i in ab_in:
@@ -86,8 +108,8 @@ for i in range(19): # 0 - 19
 #    g.insert_ab((i,i+1))
 g.build_model()
 
-h = AbGraph(20,1)
-h.build_model()
+h = AbGraph.from_graph(g)
+h.build_model()     # Overload build_model to accept weights from another model
 
 def get_batch():
     X = np.zeros((batch_size,20))
@@ -111,10 +133,25 @@ cost_h, opt_h = get_cost_opt(h)
 sv = tf.train.Supervisor(logdir=checkpoint_dir,save_model_secs=60)
 with sv.managed_session() as sess:
     if not sv.should_stop():
-        for i in range(50000):
+        for i in range(5000):
             X,Y = get_batch()
             loss_g,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+            loss_h,_ = 0.0,0 #sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
+            if i%50 == 0:
+                print(loss_g,loss_h)
+        #h.load_parameters(g)
+        print()
+        for i in range(1000):
+            X,Y = get_batch()
+            loss_g,_ = 0.0,0 #sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
             loss_h,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
+            if i%50 == 0:
+                print(loss_g,loss_h)
+        print()
+        for i in range(5000):
+            X,Y = get_batch()
+            loss_g,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+            loss_h,_ = 0.0,0 #sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
             if i%50 == 0:
                 print(loss_g,loss_h)
 
