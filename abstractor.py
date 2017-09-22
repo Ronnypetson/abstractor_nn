@@ -64,7 +64,7 @@ class AbGraph:
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k].initialized_value())+self.biases[k].initialized_value())
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
-        for f in self.front:
+        for f in sorted(self.front):
             if len(self.activations[f].shape) == 1:
                 front_.append(self.activations[f])
             else:
