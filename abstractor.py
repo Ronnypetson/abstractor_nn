@@ -31,20 +31,18 @@ class AbGraph:
         self.abstractors = copy.deepcopy(g.abstractors)
         self.X = tf.placeholder(tf.float32,shape=(batch_size,h.input_len))    # None
         self.Y = tf.placeholder(tf.float32,shape=(batch_size,h.output_len))   #
-        #self.weights = copy.deepcopy(g.weights)    # Weights and biases of each abstractor
-        #self.biases = {}
-        #self.activations = {}   # the output of the nodes
         return h
-
-    #def load_parameters(self,g):
-    #    for k in g.weights:
-    #        #aux = tf.Variable(np.zeros((2,1)))  # g.weights[k].shape
-    #        #self.weights[k] = aux.assign(g.weights[k])
-    #    for k in g.biases:
-    #        #aux = tf.Variable(np.zeros(g.biases[k].shape))
-    #        #self.biases[k] = aux.assign(g.biases[k])
-    #    #self.activations = g.activations
-
+    
+    def load_parameters(self,g):
+        for k in g.weights:
+            #aux = tf.Variable(np.zeros(g.weights[k].shape),dtype=tf.float32) # g.weights[k].shape
+            #self.weights[k] = tf.Variable(aux.assign(g.weights[k]))
+            tf.assign(self.weights[k],g.weights[k])
+        for k in g.biases:
+            #aux = tf.Variable(np.zeros(g.biases[k].shape),dtype=tf.float32)
+            #self.biases[k] = tf.Variable(aux.assign(g.biases[k]))
+            tf.assign(self.biases[k],g.biases[k])
+    
     def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2)
         for i in ab_in:
             if i not in self.nodes:
@@ -97,19 +95,22 @@ class AbGraph:
         elif len(front_.shape) == 1:
             front_ = [front_]
         self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
+    
+    def init_var(self,sess):
+        for k in self.weights:
+            sess.run(self.weights[k].initializer)
+        for k in self.biases:
+            sess.run(self.biases[k].initializer)
 
 g = AbGraph(20,1)
 #g.insert_ab((0,1))
-for i in range(19): # 0 - 19
-    g.insert_ab((i,i+1))
+#for i in range(19): # 0 - 19
+#    g.insert_ab((i,i+1))
 #for i in range(20,38):
 #    g.insert_ab((i,i+1))
 #for i in range(39,56):
 #    g.insert_ab((i,i+1))
 g.build_model()
-
-h = AbGraph.from_graph(g)
-h.build_model()     # Overload build_model to accept weights from another model
 
 def get_batch():
     X = np.zeros((batch_size,20))
@@ -124,34 +125,59 @@ def get_batch():
 
 def get_cost_opt(g_):
     cost = tf.losses.mean_squared_error(g_.Y,g_.output)
-    opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+    opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
     return cost, opt
 
 cost_g, opt_g = get_cost_opt(g)
-cost_h, opt_h = get_cost_opt(h)
 
-sv = tf.train.Supervisor(logdir=checkpoint_dir,save_model_secs=60)
-with sv.managed_session() as sess:
-    if not sv.should_stop():
-        for i in range(5000):
-            X,Y = get_batch()
-            loss_g,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
-            loss_h,_ = 0.0,0 #sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
-            if i%50 == 0:
-                print(loss_g,loss_h)
-        #h.load_parameters(g)
-        print()
-        for i in range(1000):
-            X,Y = get_batch()
-            loss_g,_ = 0.0,0 #sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
-            loss_h,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
-            if i%50 == 0:
-                print(loss_g,loss_h)
-        print()
-        for i in range(5000):
-            X,Y = get_batch()
-            loss_g,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
-            loss_h,_ = 0.0,0 #sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
-            if i%50 == 0:
-                print(loss_g,loss_h)
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    for i in range(5000):
+        X,Y = get_batch()
+        loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+        if i%50 == 0:
+            print(loss)
+    print()
+    h = AbGraph.from_graph(g)
+    h.build_model()
+    h.load_parameters(g)
+    cost_h, opt_h = get_cost_opt(h)
+    h.init_var(sess)
+    for i in range(5000):
+        X,Y = get_batch()
+        loss,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
+        if i%50 == 0:
+            print(loss)
+    print()
+    for i in range(2000):
+        X,Y = get_batch()
+        loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+        if i%50 == 0:
+            print(loss)
+
+#sv = tf.train.Supervisor(logdir=checkpoint_dir,save_model_secs=60)
+#with sv.managed_session() as sess:
+#    if not sv.should_stop():
+#        for i in range(3000):
+#            X,Y = get_batch()
+#            loss_g,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+#            loss_h,_ = 0.0,0 #sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
+#            if i%50 == 0:
+#                print(loss_g,loss_h)
+#        print()
+#        h.build_model()
+#        cost_h, opt_h = get_cost_opt(h)
+#        for i in range(1000):
+#            X,Y = get_batch()
+#            loss_g,_ = 0.0,0 #sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+#            loss_h,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
+#            if i%50 == 0:
+#                print(loss_g,loss_h)
+#        #print()
+#        #for i in range(5000):
+#        #    X,Y = get_batch()
+#        #    loss_g,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
+#        #    loss_h,_ = 0.0,0 #sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
+#        #    if i%50 == 0:
+#        #        print(loss_g,loss_h)
 
