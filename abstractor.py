@@ -119,7 +119,7 @@ def get_batch():
         s = 0.0
         for j in range(20):
             X[i,j] = rd.uniform(1.0,2.0)
-            s += X[i,j]**2
+            s += j*X[i,j]**2
         Y[i] = [s]
     return X,Y
 
@@ -132,7 +132,7 @@ cost_g, opt_g = get_cost_opt(g)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for i in range(5000):
+    for i in range(15000):
         X,Y = get_batch()
         loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
@@ -143,13 +143,13 @@ with tf.Session() as sess:
     h.load_parameters(g)
     cost_h, opt_h = get_cost_opt(h)
     h.init_var(sess)
-    for i in range(5000):
+    for i in range(1500):
         X,Y = get_batch()
         loss,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
         if i%50 == 0:
             print(loss)
     print()
-    for i in range(2000):
+    for i in range(1000):
         X,Y = get_batch()
         loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
