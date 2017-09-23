@@ -35,12 +35,8 @@ class AbGraph:
     
     def load_parameters(self,g):
         for k in g.weights:
-            #aux = tf.Variable(np.zeros(g.weights[k].shape),dtype=tf.float32) # g.weights[k].shape
-            #self.weights[k] = tf.Variable(aux.assign(g.weights[k]))
             tf.assign(self.weights[k],g.weights[k])
         for k in g.biases:
-            #aux = tf.Variable(np.zeros(g.biases[k].shape),dtype=tf.float32)
-            #self.biases[k] = tf.Variable(aux.assign(g.biases[k]))
             tf.assign(self.biases[k],g.biases[k])
     
     def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2)
