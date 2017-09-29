@@ -29,10 +29,13 @@ class AbGraph:
             g.nodes.add(i)   # 0 to input_len-1, input_len to input_len+output_len-1
             g.front.add(i)
         return g
-
+    
     @classmethod
     def from_graph(self,g):
         h = AbGraph.from_size(g.input_len,g.output_len)
+        h.nodes = copy.deepcopy(g.nodes)
+        h.front = copy.deepcopy(g.front)
+        h.abstractors = copy.deepcopy(g.abstractors)
         h.build_model()
         h.load_parameters(g)
         return h
@@ -42,7 +45,7 @@ class AbGraph:
             tf.assign(self.weights[k],g.weights[k])
         for k in g.biases:
             tf.assign(self.biases[k],g.biases[k])
-
+    
     def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2)
         for i in ab_in:
             if i not in self.nodes:
@@ -104,7 +107,7 @@ class AbGraph:
             sess.run(self.biases[k].initializer)
 
 g = AbGraph.from_size(20,1)
-#g.insert_ab((0,1))
+g.insert_ab((0,1))
 #for i in range(19): # 0 - 19
 #    g.insert_ab((i,i+1))
 #for i in range(20,38):
@@ -119,7 +122,7 @@ def get_batch():
     for i in range(batch_size):
         s = 0.0
         for j in range(20):
-            X[i,j] = rd.uniform(1.0,4.0)
+            X[i,j] = rd.uniform(1.0,2.0)
             s += j*X[i,j]**2
         Y[i] = [s]
     return X,Y
