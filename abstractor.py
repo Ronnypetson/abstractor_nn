@@ -2,35 +2,39 @@ import numpy as np
 import tensorflow as tf
 import random as rd
 import copy
+import datetime as dt
 
 batch_size = 48 #
 learning_rate = 0.001
 checkpoint_dir = '/checkpoint/abstractor/'
 class AbGraph:
-    def __init__(self,input_len,output_len):
-        self.id_count = input_len   #+output_len
-        self.input_len = input_len
-        self.output_len = output_len
-        self.nodes = set() # Nodes identification
-        self.front = set()  # Nodes that can be removed
-        self.abstractors = {}   # Only one abstractor per tuple of nodes
-        self.X = tf.placeholder(tf.float32,shape=(batch_size,input_len))    # None
-        self.Y = tf.placeholder(tf.float32,shape=(batch_size,output_len))   #
-        self.weights = {}    # Weights and biases of each abstractor
-        self.biases = {}
-        self.activations = {}   # the output of the nodes
-        for i in range(self.id_count):
-            self.nodes.add(i)   # 0 to input_len-1, input_len to input_len+output_len-1
-            self.front.add(i)
+    def __init__(self):
+        self.creation_time = dt.datetime.now()
+
+    @classmethod
+    def from_size(self,input_len,output_len):
+        g = AbGraph()
+        g.id_count = input_len   #+output_len
+        g.input_len = input_len
+        g.output_len = output_len
+        g.nodes = set() # Nodes identification
+        g.front = set()  # Nodes that can be removed
+        g.abstractors = {}   # Only one abstractor per tuple of nodes
+        g.X = tf.placeholder(tf.float32,shape=(None,input_len))    # None
+        g.Y = tf.placeholder(tf.float32,shape=(None,output_len))   #
+        g.weights = {}    # Weights and biases of each abstractor
+        g.biases = {}
+        g.activations = {}   # the output of the nodes
+        for i in range(g.id_count):
+            g.nodes.add(i)   # 0 to input_len-1, input_len to input_len+output_len-1
+            g.front.add(i)
+        return g
 
     @classmethod
     def from_graph(self,g):
-        h = AbGraph(g.input_len,g.output_len)
-        self.nodes = copy.deepcopy(g.nodes)
-        self.front = copy.deepcopy(g.front)
-        self.abstractors = copy.deepcopy(g.abstractors)
-        self.X = tf.placeholder(tf.float32,shape=(batch_size,h.input_len))    # None
-        self.Y = tf.placeholder(tf.float32,shape=(batch_size,h.output_len))   #
+        h = AbGraph.from_size(g.input_len,g.output_len)
+        h.build_model()
+        h.load_parameters(g)
         return h
     
     def load_parameters(self,g):
@@ -38,7 +42,7 @@ class AbGraph:
             tf.assign(self.weights[k],g.weights[k])
         for k in g.biases:
             tf.assign(self.biases[k],g.biases[k])
-    
+
     def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2)
         for i in ab_in:
             if i not in self.nodes:
@@ -65,11 +69,12 @@ class AbGraph:
         for k in self.abstractors.keys():   # Setup parameters # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
             self.biases[k] = tf.Variable(np.zeros((1,1),dtype=np.float32))   #
+        # Parameters of the final layer (fully-connecetd)
         self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),self.output_len) ))
         self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len),dtype=np.float32))   #
         for i in range(self.input_len):     # Define activations
             self.activations[i] = self.X[:,i]   #
-        for k in sorted(self.abstractors.keys()):
+        for k in sorted(self.abstractors.keys()):   # Must be sorted to guarantee dependency order
             parents = []   #
             for i in range(len(k)):
                 parents.append(self.activations[k[i]])
@@ -98,7 +103,7 @@ class AbGraph:
         for k in self.biases:
             sess.run(self.biases[k].initializer)
 
-g = AbGraph(20,1)
+g = AbGraph.from_size(20,1)
 #g.insert_ab((0,1))
 #for i in range(19): # 0 - 19
 #    g.insert_ab((i,i+1))
@@ -114,7 +119,7 @@ def get_batch():
     for i in range(batch_size):
         s = 0.0
         for j in range(20):
-            X[i,j] = rd.uniform(1.0,2.0)
+            X[i,j] = rd.uniform(1.0,4.0)
             s += j*X[i,j]**2
         Y[i] = [s]
     return X,Y
@@ -135,8 +140,6 @@ with tf.Session() as sess:
             print(loss)
     print()
     h = AbGraph.from_graph(g)
-    h.build_model()
-    h.load_parameters(g)
     cost_h, opt_h = get_cost_opt(h)
     h.init_var(sess)
     for i in range(1500):
