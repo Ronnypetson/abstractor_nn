@@ -162,7 +162,7 @@ with tf.Session() as sess:
     cost_h, opt_h = get_cost_opt(h)
     h.init_var(sess)
     #del h.params_named['w_(-1,)']  # restore a subset of the parameters from g
-    #del h.params_named['b_(-1,)']
+    del h.params_named['b_(-1,)']
     saver_h = tf.train.Saver(h.params_named)
     saver_h.restore(sess,model_g_fn)
     for i in range(1500):
