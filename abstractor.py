@@ -93,7 +93,7 @@ class AbGraph:
             if len(parents.shape) == 3: #
                 parents = parents[0]
             child = self.abstractors[k]
-            self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k].initialized_value())+self.biases[k].initialized_value())
+            self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])  # .initialized_value()
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in sorted(self.front):
@@ -106,7 +106,7 @@ class AbGraph:
             front_ = front_[0]
         elif len(front_.shape) == 1:
             front_ = [front_]
-        self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)].initialized_value())+self.biases[(-1,)].initialized_value())
+        self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])   # .initialized_value()
     
     def init_var(self,sess):
         for k in self.weights:
