@@ -50,7 +50,7 @@ class AbGraph:
         for k in g.biases:
             tf.assign(self.biases[k],g.biases[k])
     
-    def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2)
+    def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2); criar as novas ativações e parametros, atualizar a última camada
         for i in ab_in:
             if i not in self.nodes:
                 return False
@@ -160,7 +160,7 @@ with tf.Session() as sess:
 with tf.Session() as sess:
     h = AbGraph.from_graph(g)
     cost_h, opt_h = get_cost_opt(h)
-    h.init_var(sess)
+    h.init_var(sess)    # modifica, atualiza, inicializa, restaura
     #del h.params_named['w_(-1,)']  # restore a subset of the parameters from g
     del h.params_named['b_(-1,)']
     saver_h = tf.train.Saver(h.params_named)
