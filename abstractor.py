@@ -160,7 +160,7 @@ with tf.Session() as sess:
 with tf.Session() as sess:
     h = AbGraph.from_graph(g)
     cost_h, opt_h = get_cost_opt(h)
-    h.init_var(sess)    # modifica, atualiza, inicializa, restaura
+    h.init_var(sess)    # modifica o grafo, atualiza o modelo, inicializa variáveis, restaura variáveis
     #del h.params_named['w_(-1,)']  # restore a subset of the parameters from g
     del h.params_named['b_(-1,)']
     saver_h = tf.train.Saver(h.params_named)
