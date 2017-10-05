@@ -41,7 +41,6 @@ class AbGraph:
         h.front = copy.deepcopy(g.front)
         h.abstractors = copy.deepcopy(g.abstractors)
         h.build_model()
-        #h.load_parameters(g)
         return h
     
     def load_parameters(self,g):
@@ -86,33 +85,21 @@ class AbGraph:
         for i in range(self.input_len):     # Define activations
             l = []
             for j in range(batch_size):
-                x_ = self.X[j,i]   #
+                x_ = self.X[j,i]
                 l.append([x_])
             self.activations[i] = l
-            #for j in self.activations[i]:
-            #    j = [j]
         for k in sorted(self.abstractors.keys()):   # Must be sorted to guarantee dependency order
             parents = []   #
             for i in range(len(k)):
                 parents.append(self.activations[k[i]][0])
-            #print(k,parents)
             parents = tf.transpose(parents)
-            #if len(parents.shape) == 3: #
-            #    parents = parents[0]
             child = self.abstractors[k]
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])  # .initialized_value()
         # Fully connected at the end (front -> output)
-        front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
+        front_ = []
         for f in sorted(self.front):
-            #if len(self.activations[f].shape) == 1: #
-            front_.append(self.activations[f][0])  #   front_
-            #else:
-            #    front_.append(tf.transpose(self.activations[f])[0])
+            front_.append(self.activations[f][0])
         front_ = tf.transpose(front_)
-        #if len(front_.shape) == 3:
-        #    front_ = front_[0]
-        #elif len(front_.shape) == 1:
-        #    front_ = [front_]
         self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])   # .initialized_value()
     
     def init_var(self,sess):
@@ -127,8 +114,8 @@ g = AbGraph.from_size(20,1)
 #g.insert_ab((0,2))
 #print(g.nodes)
 #print(g.front)
-#for i in range(19): # 0 - 19
-#    g.insert_ab((i,i+1))
+for i in range(19): # 0 - 19
+    g.insert_ab((i,i+1))
 #for i in range(20,38):
 #    g.insert_ab((i,i+1))
 #for i in range(39,56):
@@ -164,7 +151,7 @@ with tf.Session() as sess:
         loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
             print(loss)
-            if i%1000 == 0:
+            if i%30000 == 0:
                 saver.save(sess,model_g_fn)
     print()
 
