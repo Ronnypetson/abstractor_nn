@@ -50,7 +50,7 @@ class AbGraph:
         for k in g.biases:
             tf.assign(self.biases[k],g.biases[k])
     
-    def insert_ab(self,ab_in):   # ab_in must be tuple of shape (2); criar as novas ativações e parametros, atualizar a última camada
+    def insert_ab(self,ab_in):   # criar as novas ativacoes e parametros, atualizar a ultima camada
         for i in ab_in:
             if i not in self.nodes:
                 return False
@@ -84,28 +84,35 @@ class AbGraph:
         self.params_named['w_'+str((-1,))] = self.weights[(-1,)]
         self.params_named['b_'+str((-1,))] = self.biases[(-1,)]
         for i in range(self.input_len):     # Define activations
-            self.activations[i] = self.X[:,i]   #
+            l = []
+            for j in range(batch_size):
+                x_ = self.X[j,i]   #
+                l.append([x_])
+            self.activations[i] = l
+            #for j in self.activations[i]:
+            #    j = [j]
         for k in sorted(self.abstractors.keys()):   # Must be sorted to guarantee dependency order
             parents = []   #
             for i in range(len(k)):
-                parents.append(self.activations[k[i]])
+                parents.append(self.activations[k[i]][0])
+            #print(k,parents)
             parents = tf.transpose(parents)
-            if len(parents.shape) == 3: #
-                parents = parents[0]
+            #if len(parents.shape) == 3: #
+            #    parents = parents[0]
             child = self.abstractors[k]
             self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])  # .initialized_value()
         # Fully connected at the end (front -> output)
         front_ = [] # tf.Variable(np.zeros( (len(self.front)) ))
         for f in sorted(self.front):
-            if len(self.activations[f].shape) == 1: #
-                front_.append(self.activations[f])
-            else:
-                front_.append(tf.transpose(self.activations[f])[0])
+            #if len(self.activations[f].shape) == 1: #
+            front_.append(self.activations[f][0])  #   front_
+            #else:
+            #    front_.append(tf.transpose(self.activations[f])[0])
         front_ = tf.transpose(front_)
-        if len(front_.shape) == 3:
-            front_ = front_[0]
-        elif len(front_.shape) == 1:
-            front_ = [front_]
+        #if len(front_.shape) == 3:
+        #    front_ = front_[0]
+        #elif len(front_.shape) == 1:
+        #    front_ = [front_]
         self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])   # .initialized_value()
     
     def init_var(self,sess):
@@ -116,6 +123,10 @@ class AbGraph:
 
 g = AbGraph.from_size(20,1)
 #g.insert_ab((0,1))
+#g.insert_ab((1,2))
+#g.insert_ab((0,2))
+#print(g.nodes)
+#print(g.front)
 #for i in range(19): # 0 - 19
 #    g.insert_ab((i,i+1))
 #for i in range(20,38):
@@ -130,8 +141,8 @@ def get_batch():
     for i in range(batch_size):
         s = 0.0
         for j in range(20):
-            X[i,j] = rd.uniform(1.0,2.0)
-            s += j*X[i,j]**2
+            X[i,j] = rd.uniform(0.0,3.0)
+            s += X[i,j]**2
         Y[i] = [s]
     return X,Y
 
@@ -148,7 +159,7 @@ with tf.Session() as sess:
         saver.restore(sess,model_g_fn)
     else:
         sess.run(tf.global_variables_initializer())
-    for i in range(15000):
+    for i in range(150000):
         X,Y = get_batch()
         loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
@@ -160,9 +171,9 @@ with tf.Session() as sess:
 with tf.Session() as sess:
     h = AbGraph.from_graph(g)
     cost_h, opt_h = get_cost_opt(h)
-    h.init_var(sess)    # modifica o grafo, atualiza o modelo, inicializa variáveis, restaura variáveis
+    h.init_var(sess)    # modifica o grafo, atualiza o modelo, inicializa variaveis, restaura variaveis
     #del h.params_named['w_(-1,)']  # restore a subset of the parameters from g
-    del h.params_named['b_(-1,)']
+    #del h.params_named['b_(-1,)']
     saver_h = tf.train.Saver(h.params_named)
     saver_h.restore(sess,model_g_fn)
     for i in range(1500):
