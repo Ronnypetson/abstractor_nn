@@ -71,7 +71,14 @@ class AbGraph:
             return True
         return False
     
+    def reset_model(self):
+        self.weights = {}    # Weights and biases of each abstractor
+        self.biases = {}
+        self.params_named = {}
+        self.activations = {}   # the output of the nodes
+    
     def build_model(self):
+        self.reset_model()
         for k in self.abstractors.keys():   # Setup parameters # Weights of abstractor k
             self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) )) # mean = 0.0, sd = 1.0
             self.biases[k] = tf.Variable(np.zeros((1,1),dtype=np.float32))   #
