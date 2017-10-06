@@ -128,8 +128,8 @@ def get_batch():
     for i in range(batch_size):
         s = 0.0
         for j in range(20):
-            X[i,j] = rd.uniform(0.0,3.0)
-            s += X[i,j]**2
+            X[i,j] = rd.uniform(0.0,10.0)
+            s += X[i,j]
         Y[i] = [s]
     return X,Y
 
@@ -146,23 +146,31 @@ with tf.Session() as sess:
         saver.restore(sess,model_g_fn)
     else:
         sess.run(tf.global_variables_initializer())
-    for i in range(150000):
+    for i in range(6000):
         X,Y = get_batch()
         loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
             print(loss)
-            if i%30000 == 0:
+            if i%5000 == 0:
                 saver.save(sess,model_g_fn)
     print()
 
 with tf.Session() as sess:
     h = AbGraph.from_graph(g)
-    cost_h, opt_h = get_cost_opt(h)
-    h.init_var(sess)    # modifica o grafo, atualiza o modelo, inicializa variaveis, restaura variaveis
+    #
+    for i in range(20,38):
+        g.insert_ab((i,i+1))
+    #
     #del h.params_named['w_(-1,)']  # restore a subset of the parameters from g
     #del h.params_named['b_(-1,)']
-    saver_h = tf.train.Saver(h.params_named)
-    saver_h.restore(sess,model_g_fn)
+    #
+    h.build_model()
+    cost_h, opt_h = get_cost_opt(h)
+    h.init_var(sess)    # modifica o grafo, atualiza o modelo, inicializa variaveis, restaura variaveis
+    #
+    saver_h = tf.train.Saver(g.params_named)
+    saver_h.restore(sess,model_g_fn)    # restore from g
+    #
     for i in range(1500):
         X,Y = get_batch()
         loss,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
