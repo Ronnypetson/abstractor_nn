@@ -101,13 +101,13 @@ class AbGraph:
                 parents.append(self.activations[k[i]][0])
             parents = tf.transpose(parents)
             child = self.abstractors[k]
-            self.activations[child] = tf.nn.elu(tf.matmul(parents,self.weights[k])+self.biases[k])  # .initialized_value()
+            self.activations[child] = tf.nn.relu(tf.matmul(parents,self.weights[k])+self.biases[k])  # .initialized_value()
         # Fully connected at the end (front -> output)
         front_ = []
         for f in sorted(self.front):
             front_.append(self.activations[f][0])
         front_ = tf.transpose(front_)
-        self.output = tf.nn.elu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])   # .initialized_value()
+        self.output = tf.nn.relu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])   # .initialized_value()
     
     def init_var(self,sess):
         for k in self.weights:
@@ -121,8 +121,8 @@ g = AbGraph.from_size(20,1)
 #g.insert_ab((0,2))
 #print(g.nodes)
 #print(g.front)
-for i in range(19): # 0 - 19
-    g.insert_ab((i,i+1))
+#for i in range(19): # 0 - 19
+#    g.insert_ab((i,i+1))
 #for i in range(20,38):
 #    g.insert_ab((i,i+1))
 #for i in range(39,56):
@@ -165,8 +165,6 @@ with tf.Session() as sess:
 with tf.Session() as sess:
     h = AbGraph.from_graph(g)
     #
-    for i in range(20,38):
-        g.insert_ab((i,i+1))
     #
     #del h.params_named['w_(-1,)']  # restore a subset of the parameters from g
     #del h.params_named['b_(-1,)']
