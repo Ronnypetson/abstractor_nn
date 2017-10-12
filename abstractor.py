@@ -40,7 +40,6 @@ class AbGraph:
         h.nodes = copy.deepcopy(g.nodes)
         h.front = copy.deepcopy(g.front)
         h.abstractors = copy.deepcopy(g.abstractors)
-        h.build_model()
         return h
     
     def load_parameters(self,g):
@@ -79,30 +78,34 @@ class AbGraph:
     
     def build_model(self):
         for k in self.abstractors.keys():   # Setup parameters # Weights of abstractor k
-            k_name = self.ab_name(k)
-            self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) ),name='w_'+ k_name)
-            self.biases[k] = tf.Variable(np.zeros((1,1),dtype=np.float32),name='b_'+ k_name)
-            self.params_named['w_'+k_name] = self.weights[k]
-            self.params_named['b_'+k_name] = self.biases[k]
+            if not k in self.weights:
+                k_name = self.ab_name(k)
+                self.weights[k] = tf.Variable(tf.random_normal( (len(k),1) ),name='w_'+ k_name)
+                self.biases[k] = tf.Variable(np.zeros((1,1),dtype=np.float32),name='b_'+ k_name)
+                self.params_named['w_'+k_name] = self.weights[k]
+                self.params_named['b_'+k_name] = self.biases[k]
         # Parameters of the final layer (fully-connecetd)
-        fc_name = self.ab_name((-1,))
-        self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),self.output_len) ),name='w_'+fc_name)
-        self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len),dtype=np.float32),name='b_'+fc_name)
-        self.params_named['w_'+fc_name] = self.weights[(-1,)]
-        self.params_named['b_'+fc_name] = self.biases[(-1,)]
+        if not (-1,) in self.weights:
+            fc_name = self.ab_name((-1,))
+            self.weights[(-1,)] = tf.Variable(tf.random_normal( (len(self.front),self.output_len) ),name='w_'+fc_name)
+            self.biases[(-1,)] = tf.Variable(np.zeros((1,self.output_len),dtype=np.float32),name='b_'+fc_name)
+            self.params_named['w_'+fc_name] = self.weights[(-1,)]
+            self.params_named['b_'+fc_name] = self.biases[(-1,)]
         for i in range(self.input_len):     # Define activations
-            l = []
-            for j in range(batch_size):
-                x_ = self.X[j,i]
-                l.append([x_])
-            self.activations[i] = l
+            if not i in self.activations:
+                l = []
+                for j in range(batch_size):
+                    x_ = self.X[j,i]
+                    l.append([x_])
+                self.activations[i] = l
         for k in sorted(self.abstractors.keys()):   # Must be sorted to guarantee dependency order
-            parents = []
-            for i in range(len(k)):
-                parents.append(self.activations[k[i]][0])  # [0]
-            parents = tf.transpose(parents)
             child = self.abstractors[k]
-            self.activations[child] = tf.nn.relu(tf.matmul(parents,self.weights[k])+self.biases[k])
+            if not child in self.activations:
+                parents = []
+                for i in range(len(k)):
+                    parents.append(self.activations[k[i]][0])  # [0]
+                parents = tf.transpose(parents)
+                self.activations[child] = tf.nn.relu(tf.matmul(parents,self.weights[k])+self.biases[k])
         # Fully connected at the end (front -> output)
         front_ = []
         for f in sorted(self.front):
@@ -139,6 +142,7 @@ def get_cost_opt(g_):
 
 with tf.Session() as sess:  # sess is not AbGraph
     g = AbGraph.from_size(3,1)
+    g.insert_ab((0,1))
     g.build_model()
     cost_g, opt_g = get_cost_opt(g)
     saver = tf.train.Saver() # g.params_named;  #saver is associated with g.params_named variables
@@ -159,12 +163,17 @@ tf.reset_default_graph()
 with tf.Session() as sess:
     #
     h = AbGraph.from_graph(g)   # same structure as g, loads the operations declared in g
+    # modify h's topology
+    h.insert_ab((1,2))
+    h.build_model()
+    del h.params_named['w_'+h.ab_name((1,2))]
+    del h.params_named['b_'+h.ab_name((1,2))]
+    del h.params_named['w_.-1.']
+    del h.params_named['b_.-1.']
     cost_h, opt_h = get_cost_opt(h)
-    #sess.run(tf.global_variables_initializer())
-    saver_h = tf.train.Saver()  # g.params_named
+    sess.run(tf.global_variables_initializer())
+    saver_h = tf.train.Saver(h.params_named)  # g.params_named
     saver_h.restore(sess,model_g_fn)    # restore from g
-    #
-    # modifica o grafo, atualiza o modelo, inicializa variaveis, restaura variaveis
     #
     for i in range(6000):
         X,Y = get_batch()
