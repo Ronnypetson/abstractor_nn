@@ -5,7 +5,7 @@ import copy
 import datetime as dt
 import os.path
 
-batch_size = 2 #
+batch_size = 1 #
 learning_rate = 0.001
 checkpoint_dir = '/checkpoint/abstractor/'
 model_g_fn = checkpoint_dir + 'model_g.ckpt'
@@ -111,7 +111,8 @@ class AbGraph:
         for f in sorted(self.front):
             front_.append(self.activations[f][0])  # [0]
         front_ = tf.transpose(front_)
-        self.output = tf.nn.relu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])
+        #self.output = tf.nn.relu(tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)])
+        self.output = tf.matmul(front_,self.weights[(-1,)])+self.biases[(-1,)]
     
     def init_var(self,sess):
         for k in self.weights:
@@ -120,12 +121,12 @@ class AbGraph:
             sess.run(self.biases[k].initializer)
 
 def get_batch():
-    X = np.zeros((batch_size,3))
+    X = np.zeros((batch_size,5))
     Y = np.zeros((batch_size,1))
     for i in range(batch_size):
         s = 0.0
-        for j in range(3):
-            X[i,j] = rd.uniform(0.0,1.0)
+        for j in range(5):
+            X[i,j] = rd.uniform(-1.0,1.0)
             s += X[i,j]
         #X[i,0] = rd.uniform(0.0,1.0)
         #s = X[i,0]*(1-X[i,1])+(1-X[i,0])*X[i,1]
@@ -136,13 +137,16 @@ def get_batch():
     return X,Y
 
 def get_cost_opt(g_):
-    cost = tf.losses.mean_squared_error(g_.Y,g_.output) #losses.mean_squared_error(g_.Y,g_.output)
+    cost = tf.reduce_mean(tf.losses.mean_squared_error(g_.Y,g_.output)) #losses.mean_squared_error(g_.Y,g_.output)
     opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
     return cost, opt
 
 with tf.Session() as sess:  # sess is not AbGraph
-    g = AbGraph.from_size(3,1)
+    g = AbGraph.from_size(5,1)
     g.insert_ab((0,1))
+    g.insert_ab((1,2))
+    g.insert_ab((2,3))
+    g.insert_ab((3,4))
     g.build_model()
     cost_g, opt_g = get_cost_opt(g)
     saver = tf.train.Saver() # g.params_named;  #saver is associated with g.params_named variables
@@ -150,7 +154,7 @@ with tf.Session() as sess:  # sess is not AbGraph
         saver.restore(sess,model_g_fn)
     else:
         sess.run(tf.global_variables_initializer())
-    for i in range(11000):
+    for i in range(36000):
         X,Y = get_batch()
         loss,_ = sess.run([cost_g,opt_g],feed_dict={g.X:X,g.Y:Y})
         if i%50 == 0:
@@ -164,23 +168,23 @@ with tf.Session() as sess:
     #
     h = AbGraph.from_graph(g)   # same structure as g, loads the operations declared in g
     # modify h's topology
-    h.insert_ab((1,2))
+    h.delete_ab((0,1))
     h.build_model()
-    del h.params_named['w_'+h.ab_name((1,2))]
-    del h.params_named['b_'+h.ab_name((1,2))]
+    #del h.params_named['w_'+h.ab_name((1,2))]
+    #del h.params_named['b_'+h.ab_name((1,2))]
     del h.params_named['w_.-1.']
     del h.params_named['b_.-1.']
     cost_h, opt_h = get_cost_opt(h)
     sess.run(tf.global_variables_initializer())
-    saver_h = tf.train.Saver(h.params_named)  # g.params_named
-    saver_h.restore(sess,model_g_fn)    # restore from g
+    #saver_h = tf.train.Saver(h.params_named)  # g.params_named
+    #saver_h.restore(sess,model_g_fn)    # restore from g
     #
-    for i in range(6000):
+    for i in range(11000):
         X,Y = get_batch()
         loss,_ = sess.run([cost_h,opt_h],feed_dict={h.X:X,h.Y:Y})
         if i%50 == 0:
             print(loss)
-            if i%5000 == 0:
-                saver_h.save(sess,model_h_fn)
+            #if i%5000 == 0:
+            #    saver_h.save(sess,model_h_fn)
     print()
 
